@@ -4,6 +4,7 @@ const fs = require('fs')
 const reader = require("readline-sync");
 const axios = require('axios')
 const open = require('open');
+const chrome = require('chrome-cookies-secure');
 const jsdom = require('jsdom');
 const { JSDOM } = jsdom;
 
@@ -74,18 +75,11 @@ async function redeemCode(code, cookie){
             method: 'POST',
             headers: {
                 Cookie: `iziwincok=${cookie}; myprefix_Zalogowany=1; key-lang=EN`,
-                "User-Agent": "Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:92.0) Gecko/20100101 Firefox/92.0",
-                "Accept": "*/*",
-                "Accept-Language": "pl,en-US;q=0.7,en;q=0.3",
-                "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
                 "X-Requested-With": "XMLHttpRequest",
-                "Sec-Fetch-Dest": "empty",
-                "Sec-Fetch-Mode": "cors",
-                "Sec-Fetch-Site": "same-origin"
             },
             data: "giveaway="+giveawayCode
         })
-        while(response.data.length!=0) return response.data;    
+        return response.data;    
     
   }
  async function getGiveaways()
@@ -210,11 +204,32 @@ async function redeemCode(code, cookie){
     cls();
     if(FirstTime)
     {
+        chrome.getCookies('https://key-drop.com/en', async (err, cookies) => {
+            if(cookies?.iziwincok !== undefined)
+            {
+                console.log("\x1b[33mDetected Chrome Key-Drop Cookie, adding it to the config");
+                let user = await getUserInfo(cookies.iziwincok);
+                if(user)
+                {
+                    console.log("\x1b[32mGood job "+user.userName+". You're good to go!")
+                    config.cookies.push(cookies.iziwincok)
+                    saveConfig();
+                    users[cookie] = user;
+                    FirstTime = false;
+                    await sleep(1000);
+                    return start();
+                }else {
+                    console.log("\x1b[31mCookie invalid.\x1b[37m")
+                }
+                
+            }
+        });
+
         console.log("\x1b[33mHello there. This message is being shown to you because it's probably your first time here but don't worry, I got you")
         console.log("To get started first thing you need to do is to get your Cookie")
         console.log("I don't really want to explain what Cookies are but in this case they are authentication")
         console.log("To get your authentication Cookie install \"EditThisCookie\" extension on Google Chrome/Mozilla Firefox/Opera and head over to Key-Drop.com")
-        console.log("If you're not logged in, log in because it's important. Then Click EditThisCookie icon and search for \"iziwincok\" Cookie. Get it's value and paste it here\x1b[37m")
+        console.log("If you're not logged in, log in because it's important. Then Click EditThisCookie icon and search for \"iziwincok\" Cookie. Get it's value and paste it here")
         let cookie = reader.question("Cookie: ")
         let user = await getUserInfo(cookie);
         if(!user) {
@@ -232,7 +247,14 @@ async function redeemCode(code, cookie){
             return start();
         
     }
-
+    console.log("\x1b[37m1. Add current Chrome cookie")
+    console.log("\x1b[37m2. Add Cookie")
+    console.log("\x1b[37m3. Remove Cookie")
+    console.log("\x1b[37m4. Current Cookies")
+    console.log("\x1b[37m8. Back")
+    
+    
+    
 
   }
   async function programSettings() {}
@@ -244,9 +266,10 @@ async function redeemCode(code, cookie){
 
     Object.entries(users).forEach(async ([key, value]) => {
         let response = await joinGiveaway(giveaways[giveawayCode].id,key)
-            if(response.status==1) console.log("Successfully joined 24h giveaway as " + value.userName)
-            else console.log("Failed to join 24h giveaway as " + value.userName)
+            if(response.Status==1) console.log("Successfully joined giveaway as " + value.userName)
+            else console.log("Failed to join giveaway as " + value.userName)
     });
+    await sleep(5000)
     console.log("\x1b[37mPress spacebar to go back to the menu.")
     while (true)
      {
@@ -261,9 +284,11 @@ async function redeemCode(code, cookie){
     let code = reader.question("Enter the code: ")
     Object.entries(users).forEach(async ([key, value]) => {
         let response = await redeemCode(code,key)
+        let gold = response.goldBonus;
         if(!response) console.log("Failed to redeem code as "+value.userName)
-        else console.log("Redeemed code as "+value.userName+" and got "+response?.goldBonus+" gold")
+        else console.log("Redeemed code as "+value.userName+" and got "+gold+" gold")
     });
+    await sleep(5000);
     console.log("\x1b[37mPress spacebar to go back to the menu.")
     while (true)
      {
@@ -283,8 +308,6 @@ async function redeemCode(code, cookie){
 
   async function usefulInfo() {
       cls();
-      console.log("\x1b[31m! PLEASE DO NOT SELL THIS PROGRAM !")
-      console.log("\x1b[32mThis program was made for free for a reason. I made it while my internet couldn't even load Key-Drop website properly and was made for people who have a similar problem")
       console.log("\x1b[31mHow to keep your cookies alive?")
       console.log("\x1b[32mThis program has a very big issue - Cookies cannot be generated which is rather understandable as Key-Drop uses Steam login so to keep your cookies alive you should avoid logging out of your account through key-drop website directly")
       console.log("\x1b[31mHow to safely log out of your account?");
